@@ -8,12 +8,16 @@ require 'time'
 module ElasticChef
   class LogHandler < Chef::Handler
     def report
-      log_dir = "/var/log/chef/elastic_chef_logs"
+      base_dir = "/var/log/chef"
+      log_dir = File.join(base_dir, "elastic_chef_logs")
+      rotate_logs_if_needed(log_dir)
+
       FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
 
       timestamp = Time.now.utc.iso8601
       hostname = node.name || Socket.gethostname
-      log_file = File.join(log_dir, "chef_log_#{hostname}_#{Time.now.to_i}.json")
+      filename = "chef_log_#{hostname}_#{Time.now.utc.strftime('%Y%m%d_%H%M%S')}.json"
+      log_file = File.join(log_dir, filename)
 
       structured_log = {
         timestamp: timestamp,
@@ -33,6 +37,20 @@ module ElasticChef
 
       File.open(log_file, "w") do |f|
         f.write(JSON.pretty_generate(structured_log))
+      end
+    end
+
+    private
+
+    def rotate_logs_if_needed(log_dir)
+      return unless Dir.exist?(log_dir) && Dir.children(log_dir).any?
+
+      timestamp = Time.now.utc.strftime('%Y%m%d_%H%M%S')
+      archive_dir = "#{log_dir}_archive_#{timestamp}"
+
+      FileUtils.mkdir_p(archive_dir)
+      Dir.children(log_dir).each do |file|
+        FileUtils.mv(File.join(log_dir, file), File.join(archive_dir, file))
       end
     end
   end
