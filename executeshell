@@ -1,0 +1,6 @@
+export ACTION=create_role
+export ROLE_NAME=webserver
+export RUN_LIST_FILE=$WORKSPACE/run_list.json
+export ATTRIBUTES_FILE=$WORKSPACE/attributes.json
+
+ruby main.rb
