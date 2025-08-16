@@ -1,0 +1,77 @@
+Here is a **crisp list of resource and code changes** you may need to automate for cookbooks built for Chef Infra Client 16.13.16 to ensure compatibility with Chef Client 18.5:
+
+***
+
+### 1. **Update Deprecated Node Attributes**
+
+- Find and replace all uses of `node['...']['_blacklist']` or `node['...']['_whitelist']`:
+  - Change them to `node['...']['blocklist']` and `node['...']['allowlist']` respectively.
+
+***
+
+### 2. **Custom Resources: Unified Mode**
+
+- Inspect your `resources/*` for custom resources:
+  - If your code relies on compile/converge phase ordering, explicitly set `unified_mode false` at the top of the resource.
+  - Otherwise, test the resource with unified mode enabled (now default).
+
+***
+
+### 3. **Platform Support Checks**
+
+- Identify cookbooks supporting now-*deprecated platforms* (e.g., Windows 8, CentOS 8, Ubuntu 16.04, macOS 10.15, 32-bit Windows):
+  - Update platform checks, and remove references/support logic for these EOL platforms.
+
+***
+
+### 4. **Resource Property Changes**
+
+- **chef_client_config**: Review usages for changed/new properties. Ensure templates and recipe files do not set removed/renamed attributes.
+- **apt_repository**: Verify and update use of the `signed_by` property for correct GPG key handling.
+- **dnf_package / zypper_package**: Fix usages where packages are locked/removed by version.
+- **chocolatey_package**: Automate updating to use new bulk resource properties, and fix any custom licensing error handling.
+- **sysctl**: Ensure use of the `comment` property for system state is no longer relied upon.
+
+***
+
+### 5. **Ruby Syntax and Gem Upgrades**
+
+- Scan for cookbooks/libraries using syntax or gems deprecated in Ruby 3.1.x or OpenSSL 3.x:
+  - Fix usages of deprecated Ruby syntax, OpenSSL APIs, and external gems that may break.
+
+***
+
+### 6. **Compliance Phase Automation**
+
+- If you have Inspec-based compliance controls, make sure they do not rely on deprecated `blank?` method from activesupport.
+
+***
+
+### 7. **Cookbook Testing and Versioning**
+
+- Add CI steps to:
+  - Run integration/unit tests under Chef Client 18.
+  - Bump cookbook versions after automated modernization steps.
+
+***
+
+### 8. **License Management Recipes**
+
+- Update knife license commands and licensing logic if present.
+
+***
+
+You can script automated checks and fixes for these topics using shell + Ruby tools, and further automate code style upgrades using **Cookstyle** to catch known deprecations and resource options. This approach allows you to create targeted automation for each issue and keep cookbooks compatible with the latest Chef Infra releases.
+
+Sources
+[1] Chef Infra Client Release Notes https://docs.chef.io/release_notes_client/
+[2] Release Updates for Chef Infra Client 18 https://www.chef.io/blog/release-updates-for-chef-infra-client-18
+[3] Upgrade to Chef Infra Client 18 https://www.youtube.com/watch?v=xzX_mV9pBdc
+[4] Best practices for chef infra client upgrade https://community.progress.com/s/article/Best-practices-for-chef-infra-client-upgrade
+[5] Prepare for New Chef Infra Client Releases with Cookstyle https://www.youtube.com/watch?v=Tedv8Wk_sH4
+[6] Chef Cookbook dependency management and the ... http://www.hurryupandwait.io/blog/chef-cookbook-dependency-management-and-the-environment-cookbook-pattern
+[7] Upgrading the Chef Infra Client - Chef Blog https://www.chef.io/blog/upgrading-the-chef-infra-client
+[8] Chef Infra Client 18 is being marked as End Of Life ... https://github.com/chef/chef/issues/14370
+[9] About Cookbook Versioning https://docs.chef.io/cookbook_versioning/
+[10] Upgrade Lab: Chef Infra Client 12 to latest https://docs.chef.io/workstation/upgrade_lab/
+[11] Troubleshooting https://docs.chef.io/errors/
