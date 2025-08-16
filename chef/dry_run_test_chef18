@@ -1,0 +1,75 @@
+Here’s a **pytest**-based test suite for the core components of the example script. You should place this test code in a file such as `test_chef_upgrade.py` and adapt imports if you split the original script into a Python module.
+
+These tests **mock external system calls** (chef-client runs, RPM installs, log parsing, and API requests) so you can verify logic separately from integration behavior.
+
+```python
+import pytest
+import datetime
+from unittest.mock import patch, MagicMock
+import chef_upgrade_script as chef  # Replace with actual module name
+
+def test_get_last_success_converge_time_success(tmp_path):
+    log_file = tmp_path / "client.log"
+    # Create a sample log file
+    log_file.write_text("2025-08-16T13:40:10+0530 Chef Client finished, status: success\n"
+                        "2025-08-16T13:30:10+0530 Chef Client finished, status: success\n")
+    ts = chef.get_last_success_converge_time(str(log_file))
+    assert isinstance(ts, datetime.datetime)
+    assert ts.hour == 13 and ts.minute == 40
+
+def test_get_last_success_converge_time_failure(tmp_path):
+    log_file = tmp_path / "client.log"
+    log_file.write_text("2025-08-16T12:40:10+0530 Chef Client finished, status: fail\n")
+    ts = chef.get_last_success_converge_time(str(log_file))
+    assert ts is None
+
+@patch('os.system')
+def test_chef_install_calls(mock_system):
+    chef.chef_install('18.5')
+    chef.chef_install('16.13.16')
+    assert mock_system.call_count == 2
+
+@patch('subprocess.Popen')
+def test_run_chef_success(mock_popen):
+    proc = MagicMock()
+    proc.communicate.return_value = (b"output", b"")
+    proc.returncode = 0
+    mock_popen.return_value = proc
+    status, log = chef.run_chef('18.5', why_mode=True)
+    assert status == 'success'
+    assert "output" in log
+
+@patch('requests.post')
+def test_send_post_success(mock_post):
+    mock_resp = MagicMock()
+    mock_post.return_value = mock_resp
+    mock_resp.raise_for_status.return_value = None
+    chef.send_post('18.5', 'success', 'some debug log')
+    mock_post.assert_called_once()
+
+@patch('chef.get_last_success_converge_time', return_value=datetime.datetime.now())
+@patch('chef.chef_install')
+@patch('chef.run_chef', return_value=('success', 'debug'))
+@patch('chef.send_post')
+def test_main_success(mock_post, mock_run_chef, mock_install, mock_get_last):
+    chef.main()
+    assert mock_install.call_count == 2
+    assert mock_run_chef.call_count == 2
+    assert mock_post.call_count == 2
+
+@patch('chef.get_last_success_converge_time', return_value=None)
+def test_main_quit_if_old(mock_get_last):
+    assert chef.main() is None
+```
+
+***
+
+**Instructions:**
+- Save your main script as a module (e.g., `chef_upgrade_script.py`), update the import line on top accordingly.
+- Place this test code into `test_chef_upgrade.py` in the same directory.
+- Run with: `pytest test_chef_upgrade.py`
+- You may need to install pytest (`pip install pytest`) and requests.
+
+These tests check each utility and the overall workflow, and **mock all external commands/system calls** for safe unit testing. For integration testing, add separate tests without mocks as needed.
+
+Sources
