@@ -1,0 +1,62 @@
+Here are the **breaking changes** between Chef Infra Client 16.13.16 and Chef Infra Client 18.5:
+
+***
+
+## Major Breaking Changes When Migrating
+
+### 1. Deprecated Attributes Removed
+- **Chef Client 18.4+** removed the `_blacklist` and `_whitelist` node attributes, which were deprecated in Chef Client 16.3. You must use `blocklist` and `allowlist` attributes instead[1].
+
+### 2. Unified Mode Default in Custom Resources
+- **Chef Client 18** enables *unified mode* by default in custom resources. If your custom resources relied on separate compile and converge phases, this may introduce unexpected behavior. You can disable unified mode per resource if needed, but testing is recommended[1].
+
+### 3. Package/Platform Support Changes
+- Several legacy platforms are no longer supported:
+  - Chef 18 drops support for **Windows 8**, **32-bit Windows**, **CentOS 8**, **macOS 10.15**, and **Ubuntu 16.04**.
+  - New platforms are added, including Amazon Linux 2023, AlmaLinux 8, Ubuntu 24.04, Windows Server 2025, and others[1].
+
+### 4. Licensing Changes
+- **Knife license management** is now required for newer licensing workflows. Knife commands for license add/list/validate have been introduced, preparing for Chef Infra Client 19 licensing requirements[1].
+
+***
+
+## Notable Resource/Behavior Changes
+
+- **chef_client_config** (Resource): The ERB template for `client.rb` generation has changed, plus new/adjusted properties. Some properties previously returning `NoMethodError` if set to `false` now work as intended[1].
+- **apt_repository** (Resource): The `signed_by` property improves GPG key handling for package authenticity and can suppress reporting of sibling registry key values[1].
+- **dnf_package and zypper_package**: Bug fixes for lock/removal actions on versions, correcting package handling logic[1].
+- **chocolatey_package resource:** Licensing error was fixed and workflows with multiple packages under a single action now work as designed. The resource now supports new properties for bulk operations and corrects some license management errors[1].
+- **sysctl resource:** The `comment` property no longer defines system state, which could break code that expects old behavior[1].
+
+***
+
+## Other Minor Breaking or Compatibility Notes
+
+- Platform/packaging changes may require adjustments to deployment artifacts.
+- If your cookbooks rely on Ruby or OpenSSL versions, they've been upgraded (Ruby to 3.1.x, OpenSSL to 3.0.9+)[1].
+- Compliance phase changes, Inspec removed dependency on activesupport's `blank?` method[1].
+
+***
+
+## Migration/Upgrade Tips
+
+- Migrate one major version at a time and ensure cookbooks are using the allowlist/blocklist attributes rather than the deprecated terms.
+- Carefully check any custom resources for unified mode compatibility.
+- Validate platform compatibility if deploying on legacy operating systems.
+- Review resource documentation for changes in `chef_client_config`, package, repository, and licensing resources[1].
+
+***
+
+If you need a **table** comparison or details on a specific breaking change, let me know!
+
+Sources
+[1] Chef Infra Client Release Notes https://docs.chef.io/release_notes_client/
+[2] Chef Infra Client 16.13.16 Released! https://discourse.chef.io/t/chef-infra-client-16-13-16-released/19755
+[3] Chocolatey Software | Chef Infra Client 16.13.16 https://community.chocolatey.org/packages/chef-client/16.13.16
+[4] chef-server/CHANGELOG.md at main https://github.com/chef/chef-server/blob/main/CHANGELOG.md
+[5] Chef Infra Client 16 https://www.chef.io/docs/cheflibraries/product-and-user-guides/chef-infra-client-16_product-guide.pdf?sfvrsn=6595b433_4
+[6] Chef Infra Client 18.5.0 Released! https://discourse.chef.io/t/chef-infra-client-18-5-0-released/23188
+[7] Upgrading Your Cookbooks for Compatibility with ... https://www.chef.io/blog/upgrading-your-cookbooks-for-compatibility-with-chef-infra-client-16
+[8] Chef Infra msi download doesn't work anymore (cannot ... https://github.com/chef/chef/issues/11394
+[9] chef-client runs with version 18.x get a EOL warning #14365 - GitHub https://github.com/chef/chef/issues/14365
+[10] Upgrading the Chef Infra Client - Chef Blog https://www.chef.io/blog/upgrading-the-chef-infra-client
