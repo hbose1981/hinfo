@@ -1,0 +1,105 @@
+For your scaled scenario (100K nodes, team-based scheduling, detailed dry-run and rollback data, centralized reporting UI), here is a **recommended new project structure** that reflects enhanced modularity, scalability, and separation of responsibilities:
+
+***
+
+## New Project Structure for Large-Scale Chef Upgrade Automation & Reporting
+
+```plaintext
+chef_upgrades_platform/
+├── README.md
+├── requirements.txt
+├── docker-compose.yml
+├── .env.example
+│
+├── config/
+│   ├── config.yaml              # Config for versions, endpoints, node grouping, teams
+│   └── logging.conf             # Centralized logging config
+│
+├── scheduler/                   # Distributed job scheduler & orchestrator
+│   ├── __init__.py
+│   ├── schedule_manager.py      # Manage timing, team schedules, node batches
+│   ├── job_dispatcher.py        # Dispatch dry run jobs to nodes or queues
+│   └── queue_listener.py        # Listen for job completions
+│
+├── node_agent/                  # Agent deployed on nodes
+│   ├── __init__.py
+│   ├── chef_runner.py           # Chef upgrade/downgrade automation logic on nodes
+│   ├── state_collector.py       # Pre-run, post-run, rollback data collection
+│   ├── logger.py                # Capture and rotate debug logs
+│   └── uploader.py              # Send results and logs to central API
+│
+├── api_server/                  # Central reporting API backend
+│   ├── __init__.py
+│   ├── app.py                  # Flask/FastAPI server entry point
+│   ├── models.py               # SQLAlchemy models (nodes, runs, logs, teams)
+│   ├── db.py                   # Database connection/session management
+│   ├── routes/                 
+│   │   ├── nodes.py            # Node & status endpoints
+│   │   ├── runs.py             # Run status, logs ingestion
+│   │   └── auth.py             # Token/user authentication if needed
+│   └── utils.py                # Helper functions
+│
+├── dashboard_ui/                # Frontend for scheduling, reporting, and logs
+│   ├── package.json            # If React/Angular/Vue used
+│   ├── src/                   # React or Angular app source
+│   └── public/
+│
+├── db_migrations/              # Alembic or other migration scripts
+│
+├── common_libs/                # Shared code/libs for agent & API if needed
+│
+├── tests/
+│   ├── integration/        
+│   ├── unit/
+│   ├── fixtures/
+│   └── performance/            # Optional: test scale & load
+│
+├── docs/
+│   ├── architecture.md
+│   ├── api.md
+│   └── runbooks.md             # Incident & troubleshooting docs
+│
+└── scripts/
+    ├── run_scheduler.py        # Entry point to run scheduler service
+    ├── deploy_agents.sh        # Scripts to deploy and update node agents
+    └── maintenance.py          # Maintenance & cleanup tasks
+```
+
+***
+
+## Key Highlights
+
+- **scheduler/** handles distributed, team-aware scheduling and job dispatching.
+- **node_agent/** runs on each node, performing upgrade/dry-run/rollback automation, collecting logs and state.
+- **api_server/** exposes scalable APIs for ingestion of results and logs, with DB models representing runs, nodes, teams, and statuses.
+- **dashboard_ui/** provides teams with scheduling control, real-time status overview, and access to detailed logs.
+- **db_migrations/** ensures reliable schema changes as the system evolves.
+- **common_libs/** helps share validation, configs, and utilities between server and agent where appropriate.
+- **tests/** separated by unit, integration, and optionally performance testing for scale.
+- **docs/** for system documentation, API specs, and runbooks for operational support.
+
+***
+
+## Scaling Considerations
+
+- Use message queues (Kafka, RabbitMQ) or distributed task queue frameworks (Celery, Airflow) inside **scheduler/** and **node_agent/** to coordinate work reliably.
+- Store large logs possibly in object storage (S3-compatible), saving only paths in the DB.
+- Implement pagination, caching, and RBAC in your API and dashboard for usability at scale.
+- Cloud-native managed DB/Postgres clusters recommended for resilience.
+
+***
+
+This architecture and structure support your need to schedule and track millions of dry run executions over time with full data capture and a team-friendly interface for status and troubleshooting.
+
+If you want, I can help draft scaffolding code for any component or suggest detailed implementation patterns.
+
+Sources
+[1] [PDF] SCALING CHEF AUTOMATE https://www.chef.io/docs/cheflibraries/whitepapers/scaling_chef_automate_beyond_100000_nodes.pdf?sfvrsn=64b02d97_2
+[2] Scaling Chef Automate Beyond 100000 Nodes - White paper https://www.chef.io/whitepapers/scaling-chef-automate-beyond-100-000-nodes
+[3] Automate your infrastructure with Chef - YouTube https://www.youtube.com/watch?v=vCAjKK5XSXY
+[4] mikeroyal/Chef-Guide - GitHub https://github.com/mikeroyal/Chef-Guide
+[5] Chef Tutorial | DevOps Tools | Simplilearn - YouTube https://www.youtube.com/watch?v=04oITjdLtho
+[6] Automation using Chef - GeeksforGeeks https://www.geeksforgeeks.org/software-engineering/automation-using-chef/
+[7] Setting Up a Chef Master Node and Configuring a Node - DevOps.dev https://blog.devops.dev/setting-up-a-chef-master-node-and-configuring-a-node-93cc41dfcf1f
+[8] AWS Marketplace: Chef Automate (First 10 nodes free) Reviews https://aws.amazon.com/marketplace/reviews/reviews-list/B01N813OWL
+[9] Chef is Dead : r/devops - Reddit https://www.reddit.com/r/devops/comments/d7lzp4/chef_is_dead/
