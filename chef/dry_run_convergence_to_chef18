@@ -1,0 +1,74 @@
+import os
+import subprocess
+import sys
+import time
+import socket
+import requests
+from datetime import datetime, timedelta
+
+CHEF18_INSTALL = '/opt/chef18/bin/chef-client'
+CHEF16_INSTALL = '/opt/chef16/bin/chef-client'
+API_ENDPOINT = 'http://your-api-server/api/chef-dry-run/post/'
+NODE_NAME = socket.gethostname()
+
+def get_last_success_converge_time(log_file='/var/log/chef/client.log'):
+    # Parse log file for last successful converge timestamp.
+    with open(log_file, 'r') as f:
+        lines = f.readlines()
+    for line in reversed(lines):
+        if "Chef Client finished" in line and "success" in line:
+            # Parse timestamp from line, assuming ISO format at start
+            ts = line.split()[0]
+            return datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S%z')
+    return None
+
+def chef_install(version):
+    if version == '18.5':
+        # Download and install chef 18.5 client (adjust path/URL as needed)
+        os.system('curl -L https://packages.chef.io/files/stable/chef/18.5.0/el/7/chef-18.5.0-1.el7.x86_64.rpm -o /tmp/chef18.rpm')
+        os.system('sudo rpm -Uvh /tmp/chef18.rpm')
+    elif version == '16.13.16':
+        os.system('curl -L https://packages.chef.io/files/stable/chef/16.13.16/el/7/chef-16.13.16-1.el7.x86_64.rpm -o /tmp/chef16.rpm')
+        os.system('sudo rpm -Uvh --oldpackage /tmp/chef16.rpm')
+
+def run_chef(version, why_mode=True):
+    args = ['chef-client', '-l', 'debug']
+    if why_mode:
+        args.append('--why-run')
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = p.communicate()
+    status = 'success' if p.returncode == 0 else 'fail'
+    log = output.decode() + "\n" + error.decode()
+    return status, log
+
+def send_post(version, status, debug_log):
+    data = {
+        'node_name': NODE_NAME,
+        'chef_client_version': version,
+        'time': datetime.now().isoformat(),
+        'convergence_status': status,
+        'convergence_debug_log': debug_log
+    }
+    try:
+        resp = requests.post(API_ENDPOINT, json=data)
+        resp.raise_for_status()
+    except Exception as ex:
+        print(f"Failed to post  {ex}")
+
+def main():
+    last_ok = get_last_success_converge_time()
+    if not last_ok or (datetime.now(last_ok.tzinfo) - last_ok) > timedelta(minutes=15):
+        sys.exit(0)
+
+    # Install v18.5, dry run, send log
+    chef_install('18.5')
+    status, debug_log = run_chef('18.5', why_mode=True)
+    send_post('18.5', status, debug_log)
+
+    # Downgrade to 16.13.16, normal run, send log
+    chef_install('16.13.16')
+    status, debug_log = run_chef('16.13.16', why_mode=False)
+    send_post('16.13.16', status, debug_log)
+
+if __name__ == '__main__':
+    main()
